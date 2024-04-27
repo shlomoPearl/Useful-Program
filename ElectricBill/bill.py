@@ -3,7 +3,7 @@ import PyPDF2
 nis = "\u20AA"
 
 
-def parse_bill(pageObj):
+def parse_bill(pageObj, ):
     electric = 0
     water = 0
     # extracting text from page
