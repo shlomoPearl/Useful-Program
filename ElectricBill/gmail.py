@@ -87,8 +87,8 @@ class Gmail:
                                         date_time_list = header['value'].split(' ')
                                         date_time = f"{date_time_list[1]}/{date_time_list[2]}/{date_time_list[3]}"
                                         # print(datetime.strptime(date_time, "%d/%b/%Y").date().strftime("%d/%m/%Y"))
-                                        date = parse_date(parse_date(date_time, True, "%d/%b/%Y").date(), False,
-                                                          "%d/%m/%Y")
+                                        date = parse_date(parse_date(date_time, True, "%d/%b/%Y")
+                                                          .date(), False, "%m/%Y")
                                         print(date)
                                         date_attachment_dict[date] = data
             return date_attachment_dict
