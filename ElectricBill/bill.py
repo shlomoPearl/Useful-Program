@@ -1,44 +1,26 @@
 import PyPDF2
+from io import BytesIO
 
 nis = "\u20AA"
 
 
-def parse_bill(pageObj, ):
-    electric = 0
-    water = 0
-    # extracting text from page
-    bill_list = pageObj.extract_text().splitlines()
-    for line in bill_list:
-        if 'חשמל' in line.split(' '):
-            electric_split = line.split(' ')
-            # print(electric_split[0])
-            # print(electric_split)
-            for i, sign in enumerate(electric_split):
-                # print(i, sign)
-                if sign == nis and i < len(electric_split) - 1 and electric_split[i + 1].replace('.', '', 1).isdigit():
-                    electric += float(electric_split[i + 1])
-        if 'מים' in line.split(' '):
-            water_split = line.split(' ')
-            for i, sign in enumerate(water_split):
-                if sign == nis and i < len(electric_split) - 1 and water_split[i + 1].replace('.', '', 1).isnumeric():
-                    water += float(water_split[i + 1])
-    return electric, water
+class ReadBill:
+    def __init__(self, date_data_dict: dict):
+        self.date_data_dict = date_data_dict
 
-
-def read_bill(file_name, date) -> dict:
-    # creating a pdf file object
-    pdfFileObj = open(file_name, 'rb')
-
-    # creating a pdf reader object
-    pdfReader = PyPDF2.PdfReader(pdfFileObj)
-
-    # printing number of pages in pdf file
-    tuple_bill = ()
-    for i in range(len(pdfReader.pages)):
-        pageObj = pdfReader.pages[i]
-        tuple_bill = parse_bill(pageObj)
-        if parse_bill(pageObj) != (0, 0):
-            tuple_bill
-
-    # closing the pdf file object
-    pdfFileObj.close()
+    def parser(self, parse_key):
+        bill_dict = {}
+        for date in self.date_data_dict.keys():
+            bill_dict[date] = 0
+            pdf_data = BytesIO(self.date_data_dict.get(date))
+            pdf_file = PyPDF2.PdfReader(pdf_data)
+            for page in pdf_file.pages:
+                text = page.extract_text()
+                lines = text.split('\n')
+                for line in lines:
+                    line_split = line.split(' ')
+                    if parse_key in line_split.reverse():
+                        for i, sign in enumerate(line_split):
+                            if sign == nis and i < len(line_split) - 1 and line_split[i + 1].replace().isdigit():
+                                bill_dict[date] += float(line_split[i + 1])
+        return bill_dict
