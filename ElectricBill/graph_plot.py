@@ -1,14 +1,17 @@
 import matplotlib.pyplot as plt
 
+class PatymentGraph:
+    def __init__(self, bill_dict):
+        self.bill_dict = bill_dict
 
-def plot(bill_map, title, x_title):
-    month_list = list(bill_map.keys())
-    bill_list = list(bill_map.values())
-    fig = plt.figure(figsize=(10, 5))
-    # creating the bar plot
-    plt.bar(month_list, bill_list)
-    plt.xlabel(x_title)
-    plt.ylabel("\u20AA")
-    plt.title(title)
-    plt.show()
+    def plot_graph(self):
+        dates = list(self.bill_dict.keys())
+        values = list(self.bill_dict.values())
+        plt.bar(dates, values)
+        plt.xticks(rotation=45)  # Rotate the x-axis labels for better readability
+        plt.xlabel('Date')
+        plt.ylabel('Paid')
+        plt.title('Payment account graph')
+        plt.grid(False)
+        plt.show()
 
