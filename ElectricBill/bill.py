@@ -19,8 +19,10 @@ class ReadBill:
                 lines = text.split('\n')
                 for line in lines:
                     line_split = line.split(' ')
-                    if parse_key in line_split.reverse():
+                    line_split.reverse()
+                    if parse_key in line_split:
                         for i, sign in enumerate(line_split):
-                            if sign == nis and i < len(line_split) - 1 and line_split[i + 1].replace().isdigit():
-                                bill_dict[date] += float(line_split[i + 1])
+                            if sign == nis and i < len(line_split) - 1 and \
+                                    line_split[i - 1].replace('.', '', 1).isdigit():
+                                bill_dict[date] += float(line_split[i - 1])
         return bill_dict
