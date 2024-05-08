@@ -108,7 +108,6 @@ class Gmail:
                                 email_subject = header['value']
                                 # if self.key_word is None or self.key_word in email_subject:
                                 #     continue
-                                print(email_subject)
                             if header['name'] == 'Date':
                                 date_time_list = header['value'].split(' ')
                                 date_time = f"{date_time_list[1]}/{date_time_list[2]}/{date_time_list[3]}"
