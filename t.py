@@ -133,6 +133,7 @@ def read_bill(file_name, date) -> dict:
     pdfFileObj = open(file_name, 'rb')
 
     # creating a pdf reader object
+
     pdfReader = PyPDF2.PdfReader(pdfFileObj)
 
     # printing number of pages in pdf file
