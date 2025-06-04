@@ -1,4 +1,5 @@
 venv
 *.json
 *.pdf
-t*.py
+t.py
+t1.py
