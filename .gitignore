@@ -1,5 +1,4 @@
 venv
 *.json
 *.pdf
-ElectricBill/t*.py
-PDF/t.py
+t*.py
