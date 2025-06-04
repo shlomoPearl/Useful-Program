@@ -114,7 +114,7 @@ class Gmail:
                                 d_with_month_n = parse_date(date_time, True, "%d/%b/%Y").date()
                                 s_d_with_month_n = parse_date(d_with_month_n, False, "%d/%m/%Y")
                                 real_date_bill = decrement_date(s_d_with_month_n)
-                                o_real_date_bill = parse_date(real_date_bill,True, "%d/%m/%Y")
+                                o_real_date_bill = parse_date(real_date_bill, True, "%d/%m/%Y")
                                 date = parse_date(o_real_date_bill, False, "%m/%Y")
                                 date_attachment_dict[date] = data
             return date_attachment_dict

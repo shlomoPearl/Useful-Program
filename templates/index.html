@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Bill Parser</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: auto;
+            padding: 20px;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            margin-top: 10px;
+        }
+        input, select, button {
+            padding: 8px;
+            font-size: 16px;
+            margin-top: 5px;
+        }
+        button {
+            margin-top: 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <h2>Bill Parser</h2>
+    <form method="post" enctype="multipart/form-data">
+        <label for="email">Sender Email Address:</label>
+        <input type="email" id="email" name="email" required>
+
+        <label for="subject">Subject Line:</label>
+        <input type="text" id="subject" name="subject" required>
+
+        <label for="keyword">Keyword in PDF:</label>
+        <input type="text" id="keyword" name="keyword" required>
+
+        <label for="currency">Currency Symbol:</label>
+        <select name="currency" id="currency" required>
+            <option value="₪">₪ - Israeli Shekel</option>
+            <option value="$">$ - US Dollar</option>
+            <option value="€">€ - Euro</option>
+            <option value="£">£ - British Pound</option>
+            <option value="₹">₹ - Indian Rupee</option>
+            <option value="¥">¥ - Japanese Yen</option>
+            <option value="₩">₩ - South Korean Won</option>
+        </select>
+
+        <label for="start_date">Start Date (dd/mm/yyyy):</label>
+        <input type="text" id="start_date" name="start_date" placeholder="01/01/2023" required>
+
+        <label for="end_date">End Date (dd/mm/yyyy):</label>
+        <input type="text" id="end_date" name="end_date" placeholder="31/12/2023" required>
+
+        <label for="credentials">Upload your Google credentials.json:</label>
+        <input type="file" id="credentials" name="credentials" accept=".json" required>
+
+        <button type="submit">Parse Bills</button>
+    </form>
+</body>
+</html>
+
