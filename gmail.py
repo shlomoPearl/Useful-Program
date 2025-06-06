@@ -60,23 +60,23 @@ class Gmail:
         #                    (parse_date(date_range[1], True, '%d/%m/%Y') + timedelta(days=1)).isoformat() + 'Z']
         self.token_file = "token.json"
         self.SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
-        self.credentials_file = "credentials.json"
+        self.credentials = "credentials.json"
 
     def authenticate(self):
-        # The file token.json stores the user's access and refresh tokens, and is
-        # created automatically when the authorization flow completes for the first
-        # time.
         creds = None
         if os.path.exists(self.token_file):
             creds = Credentials.from_authorized_user_file(self.token_file, self.SCOPES)
-        # If there are no (valid) credentials available, let the user log in.
+
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
                 creds.refresh(Request())
             else:
-                flow = InstalledAppFlow.from_client_secrets_file(self.credentials, self.SCOPES)
-                creds = flow.run_local_server(port=0)
-            # Save the credentials for the next run
+                flow = InstalledAppFlow.from_client_secrets_file(
+                    self.credentials, self.SCOPES,
+                )
+                flow.redirect_uri = 'http://localhost:5000/'
+                creds = flow.run_local_server(port=5000)
+
             with open(self.token_file, "w") as token:
                 token.write(creds.to_json())
         print("The authentication was successful")

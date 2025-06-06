@@ -1,55 +1,60 @@
+from flask import Flask, request, render_template, send_file
+import tempfile
 import os
-from flask import Flask, render_template, request, send_file
-from io import BytesIO
 from gmail import Gmail
 from bill import ReadBill
 from graph_plot import PatymentGraph
+import io
+import matplotlib.pyplot as plt
 
 app = Flask(__name__)
+
 
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
-        # Get form data
-        email = request.form["email"]
-        subject = request.form["subject"]
-        keyword = request.form["keyword"]
-        currency = request.form["currency"]
-        start_date = request.form["start_date"]
-        end_date = request.form["end_date"]
+        email_address = request.form.get("email")
+        subject = request.form.get("subject")
+        keyword = request.form.get("keyword")
+        currency = request.form.get("currency")
+        start_date = request.form.get("start_date")
+        end_date = request.form.get("end_date")
 
-        # Path to your pre-uploaded credentials
-        cred_path = "credentials.json"
-        token_path = "token.json"
+        if not all([email_address, subject, start_date, end_date, currency]):
+            return "Missing required form fields.", 400
 
-        # Gmail logic
-        gmail_client = Gmail(
-            address=email,
-            subject=subject,
-            key_word=keyword,
-            result_num=36,
-            date_range=[start_date, end_date]
-        )
-        gmail_client.credentials_file = cred_path
-        gmail_client.token_file = token_path
+        try:
+            # credentials_path = "credentials.json"
 
-        creds = gmail_client.authenticate()
-        mail_data = gmail_client.search_mail(creds)
+            gmail_obj = Gmail(
+                address=email_address,
+                subject=subject,
+                key_word=keyword,
+                date_range=[start_date, end_date],
+            )
+            # gmail_obj.credentials = credentials_path
+            creds = gmail_obj.authenticate()
+            attachments = gmail_obj.search_mail(creds)
 
-        if not mail_data:
-            return "No matching emails found."
+            bill_obj = ReadBill(attachments)
+            bill_dict = bill_obj.parser(currency)
 
-        bill_parser = ReadBill(mail_data)
-        bill_dict = bill_parser.parser(currency)
+            graph = PatymentGraph(bill_dict)
+            plt.figure(figsize=(10, 6))
+            graph.plot_graph()
 
-        # Plot graph and send back as image
-        graph = PatymentGraph(bill_dict, f"{start_date} to {end_date} - {currency}")
-        image_io = BytesIO()
-        graph.save_graph(image_io)
-        image_io.seek(0)
-        return send_file(image_io, mimetype='image/png', download_name='graph.png')
+            img_bytes = io.BytesIO()
+            plt.savefig(img_bytes, format='png')
+            img_bytes.seek(0)
+            plt.close()
+
+            return send_file(img_bytes, mimetype='image/png', as_attachment=True, download_name='bill_plot.png')
+
+        except Exception as e:
+            return f"Error: {str(e)}", 500
 
     return render_template("index.html")
 
+
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0")
+    app.run(debug=True, port=5050)
