@@ -117,6 +117,7 @@ class Gmail:
                                 o_real_date_bill = parse_date(real_date_bill, True, "%d/%m/%Y")
                                 date = parse_date(o_real_date_bill, False, "%m/%Y")
                                 date_attachment_dict[date] = data
+            # print("date attachment dict:", date_attachment_dict)
             return date_attachment_dict
         except HttpError as error:
             print(f"An error occurred: {error}")

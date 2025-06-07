@@ -1,5 +1,8 @@
+import matplotlib
+matplotlib.use('Agg')
 from datetime import datetime
 import matplotlib.pyplot as plt
+
 
 class PatymentGraph:
     def __init__(self, bill_dict, title='Payment account graph'):
@@ -21,5 +24,6 @@ class PatymentGraph:
         plt.ylabel('Paid')
         plt.title(self.title)
         plt.grid(False)
-        plt.show()
-
+        # plt.show(
+        plt.savefig('2024.png')
+        plt.close()

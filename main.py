@@ -37,18 +37,15 @@ def index():
             attachments = gmail_obj.search_mail(creds)
 
             bill_obj = ReadBill(attachments)
-            bill_dict = bill_obj.parser(currency)
-
+            bill_dict = bill_obj.parser(keyword,)
             graph = PatymentGraph(bill_dict)
-            plt.figure(figsize=(10, 6))
+            # plt.figure(figsize=(10, 6))
             graph.plot_graph()
-
-            img_bytes = io.BytesIO()
-            plt.savefig(img_bytes, format='png')
-            img_bytes.seek(0)
-            plt.close()
-
-            return send_file(img_bytes, mimetype='image/png', as_attachment=True, download_name='bill_plot.png')
+            # img_bytes = io.BytesIO()
+            # plt.savefig(img_bytes, format='png')
+            # img_bytes.seek(0)
+            # plt.close()
+            print("FINISH")
 
         except Exception as e:
             return f"Error: {str(e)}", 500

@@ -24,4 +24,5 @@ class ReadBill:
                                 amount = line_split[i + 1].replace(',', '').replace('.', '', 1)
                                 if amount.replace('.', '', 1).isdigit():
                                     bill_dict[date] += float(line_split[i + 1])
+        print("bill dict-", bill_dict)
         return bill_dict
