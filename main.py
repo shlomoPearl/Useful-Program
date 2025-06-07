@@ -36,8 +36,8 @@ def index():
             creds = gmail_obj.authenticate()
             attachments = gmail_obj.search_mail(creds)
 
-            bill_obj = ReadBill(attachments)
-            bill_dict = bill_obj.parser(keyword,)
+            bill_obj = ReadBill(attachments, currency)
+            bill_dict = bill_obj.parser(keyword, )
             graph = PatymentGraph(bill_dict)
             # plt.figure(figsize=(10, 6))
             graph.plot_graph()
