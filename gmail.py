@@ -1,5 +1,4 @@
 from __future__ import print_function
-
 import base64
 import os.path
 from datetime import datetime, timedelta
@@ -14,37 +13,32 @@ from googleapiclient.errors import HttpError
 # If modifying these scopes, delete the file token.json.
 
 
-def parse_date(date_str, strp, date_format):
-    if strp:  # '%d/%m/%Y'
-        return datetime.strptime(date_str, date_format)
-    else:
-        return datetime.strftime(date_str, date_format)
-
-
+# Convert date from dd/mm/yyyy format to yyyy/mm/dd format with month +1
 def increment_date(date_str):
-    date_object = datetime.strptime(date_str, '%d/%m/%Y')
-    day_obj = date_object.day
-    month_obj = date_object.month
-    next_month = (month_obj + 1) % 12 if (month_obj + 1) % 12 > 0 else 12
-    year_obj = date_object.year
-    num_day_current = calendar.monthrange(year_obj, month_obj)[1]
-    num_day_next = calendar.monthrange(year_obj, next_month)[1]
-    new_date = date_object + timedelta(days=num_day_next if day_obj == num_day_current else num_day_current)
-    new_date_str = new_date.strftime('%d/%m/%Y')
-    return new_date_str
+    date_obj = datetime.strptime(date_str, '%d/%m/%Y')
+    month = date_obj.month + 1
+    year = date_obj.year
+    day = date_obj.day
+    if month > 12:
+        month = 1
+        year += 1
+    return f"{year:04d}/{month:02d}/{day:02d}"
 
 
-def decrement_date(date_str):
-    date_object = datetime.strptime(date_str, '%d/%m/%Y')
-    day_obj = date_object.day
-    month_obj = date_object.month
-    before_month = (month_obj - 1) % 12 if (month_obj - 1) % 12 > 0 else 12
-    year_obj = date_object.year
-    num_day_current = calendar.monthrange(year_obj, month_obj)[1]
-    num_day_before = calendar.monthrange(year_obj, before_month)[1]
-    new_date = date_object + timedelta(days=-(num_day_current if day_obj == num_day_current else num_day_before))
-    new_date_str = new_date.strftime('%d/%m/%Y')
-    return new_date_str
+# Extract date from list format and return as mm/yyyy with month -1
+def decrement_date(date_list):
+    month_name = date_list[2]  # 'Mar'
+    year = date_list[3]  # '2024'
+    month_dict = {
+        'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'May': 5, 'Jun': 6,
+        'Jul': 7, 'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12
+    }
+    month_num = month_dict[month_name] - 1
+    year_num = int(year)
+    if month_num < 1:
+        month_num = 12
+        year_num -= 1
+    return f"{month_num:02d}/{year_num}"
 
 
 class Gmail:
@@ -110,12 +104,7 @@ class Gmail:
                                 #     continue
                             if header['name'] == 'Date':
                                 date_time_list = header['value'].split(' ')
-                                date_time = f"{date_time_list[1]}/{date_time_list[2]}/{date_time_list[3]}"
-                                d_with_month_n = parse_date(date_time, True, "%d/%b/%Y").date()
-                                s_d_with_month_n = parse_date(d_with_month_n, False, "%d/%m/%Y")
-                                real_date_bill = decrement_date(s_d_with_month_n)
-                                o_real_date_bill = parse_date(real_date_bill, True, "%d/%m/%Y")
-                                date = parse_date(o_real_date_bill, False, "%m/%Y")
+                                date = decrement_date(date_time_list)
                                 date_attachment_dict[date] = data
             # print("date attachment dict:", date_attachment_dict)
             return date_attachment_dict
