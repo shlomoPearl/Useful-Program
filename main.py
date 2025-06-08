@@ -20,16 +20,13 @@ def index():
         start_date = request.form.get("start_date")
         end_date = request.form.get("end_date")
 
-        if not all([email_address, subject, start_date, end_date, currency]):
+        if not all([email_address, start_date, end_date, currency]):
             return "Missing required form fields.", 400
 
         try:
-            # credentials_path = "credentials.json"
-
             gmail_obj = Gmail(
                 address=email_address,
                 subject=subject,
-                key_word=keyword,
                 date_range=[start_date, end_date],
             )
             # gmail_obj.credentials = credentials_path
@@ -37,7 +34,7 @@ def index():
             attachments = gmail_obj.search_mail(creds)
 
             bill_obj = ReadBill(attachments, currency)
-            bill_dict = bill_obj.parser(keyword, )
+            bill_dict = bill_obj.parser(keyword)
             graph = PatymentGraph(bill_dict)
             # plt.figure(figsize=(10, 6))
             graph.plot_graph()

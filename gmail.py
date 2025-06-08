@@ -1,8 +1,7 @@
 from __future__ import print_function
 import base64
 import os.path
-from datetime import datetime, timedelta
-import calendar
+from datetime import datetime
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -27,8 +26,8 @@ def increment_date(date_str):
 
 # Extract date from list format and return as mm/yyyy with month -1
 def decrement_date(date_list):
-    month_name = date_list[2]  # 'Mar'
-    year = date_list[3]  # '2024'
+    month_name = date_list[2]
+    year = date_list[3]
     month_dict = {
         'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'May': 5, 'Jun': 6,
         'Jul': 7, 'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12
@@ -43,11 +42,10 @@ def decrement_date(date_list):
 
 class Gmail:
 
-    def __init__(self, address=None, subject=None, filename='pdf', key_word=None, result_num=36, date_range=[]):
+    def __init__(self, address, subject, filename='pdf', result_num=36, date_range=[]):
         self.address = address
         self.subject = subject
         self.filename = filename
-        self.key_word = key_word
         self.result_num = result_num
         self.date_range = date_range
         # self.date_range = [parse_date(date_range[0], True, '%d/%m/%Y').isoformat() + 'Z',
@@ -77,8 +75,12 @@ class Gmail:
         return creds
 
     def search_mail(self, creds):
-        query = f"from:{self.address} subject:{self.subject} filename:{self.filename}" \
-                f" after:{increment_date(self.date_range[0])} before:{increment_date(self.date_range[1])}"
+        query_parts = [f"from:{self.address}", f"filename:{self.filename}"]
+        if self.subject:
+            query_parts.append(f"subject:{self.subject}")
+        query_parts.append(f"after:{increment_date(self.date_range[0])}")
+        query_parts.append(f"before:{increment_date(self.date_range[1])}")
+        query = " ".join(query_parts)
         print(query)
         try:
             # Call the Gmail API
@@ -90,7 +92,6 @@ class Gmail:
 
                 msg = service.users().messages().get(userId='me', id=message['id']).execute()
                 # get the subject and the date
-                # Check for attachments pdf files and if it contains the key_word
                 for part in msg['payload']['parts']:
                     if part['filename'] and part['filename'].endswith('.pdf'):
                         attachment_data = part['body']['attachmentId']
@@ -98,10 +99,10 @@ class Gmail:
                             .get(userId='me', messageId=message['id'], id=attachment_data).execute()
                         data = base64.urlsafe_b64decode(attachment['data'].encode('UTF-8'))
                         for header in msg['payload']['headers']:
-                            if header['name'] == 'Subject':
-                                email_subject = header['value']
-                                # if self.key_word is None or self.key_word in email_subject:
-                                #     continue
+                            # if header['name'] == 'Subject':
+                            #     email_subject = header['value']
+                            #     # if self.key_word is None or self.key_word in email_subject:
+                            #     #     continue
                             if header['name'] == 'Date':
                                 date_time_list = header['value'].split(' ')
                                 date = decrement_date(date_time_list)

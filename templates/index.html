@@ -40,11 +40,64 @@
         <label for="email">Sender Email Address:</label>
         <input type="email" id="email" name="email" required>
 
-        <label for="subject">Subject Line:</label>
-        <input type="text" id="subject" name="subject" required>
+        <style>
+          .tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+            color: #007bff;
+          }
 
-        <label for="keyword">Keyword in PDF:</label>
-        <input type="text" id="keyword" name="keyword" required>
+          .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 280px;
+            background-color: #333;
+            color: #fff;
+            text-align: left;
+            padding: 10px;
+            border-radius: 6px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%; /* Position above the icon */
+            left: 50%;
+            margin-left: -140px;
+            opacity: 0;
+            transition: opacity 0.3s;
+          }
+
+          .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+          }
+        </style>
+
+<!--        <label for="subject">Subject Line:</label>-->
+<!--        <input type="text" id="subject" name="subject">-->
+
+<!--        <label for="keyword">Keyword in PDF:</label>-->
+<!--        <input type="text" id="keyword" name="keyword">-->
+
+        <label for="subject">Subject (optional)
+          <span class="tooltip">❓
+            <span class="tooltiptext">
+              Filter emails by subject. Useful if the same sender emails multiple types of invoices. Example: "Water Bill".
+            </span>
+          </span>
+        </label>
+        <input type="text" id="subject" name="subject" placeholder="e.g., Electricity Invoice">
+
+        <br>
+
+        <label for="keyword">Keyword (optional)
+          <span class="tooltip">❓
+            <span class="tooltiptext">
+              Filter invoice content by keyword. Useful if one invoice includes several services. Example: "Maintenance".
+            </span>
+          </span>
+        </label>
+        <input type="text" id="keyword" name="keyword" placeholder="e.g., Water">
+
+
 
         <label for="currency">Currency Symbol:</label>
         <select name="currency" id="currency" required>
@@ -57,14 +110,78 @@
             <option value="₩">₩ - South Korean Won</option>
         </select>
 
-        <label for="start_date">Start Date (dd/mm/yyyy):</label>
-        <input type="text" id="start_date" name="start_date" placeholder="01/01/2023" required>
+       <label for="start_date">Start Date:</label>
+        <input type="text" id="start_date" name="start_date" required placeholder="dd/mm/yyyy">
+        <div id="start_error" style="color: red; font-size: 12px;"></div>
 
-        <label for="end_date">End Date (dd/mm/yyyy):</label>
-        <input type="text" id="end_date" name="end_date" placeholder="31/12/2023" required>
+        <label for="end_date">End Date:</label>
+        <input type="text" id="end_date" name="end_date" required placeholder="dd/mm/yyyy">
+        <div id="end_error" style="color: red; font-size: 12px;"></div>
 
         <button type="submit">Parse Bills</button>
     </form>
+<script>
+function isValidDateFormat(val) {
+  // Match pattern: dd/mm/yyyy
+  const regex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+  const match = val.match(regex);
+  if (!match) return false;
+
+  const [_, dd, mm, yyyy] = match.map(Number);
+
+  const date = new Date(yyyy, mm - 1, dd);
+  return (
+    date.getFullYear() === yyyy &&
+    date.getMonth() === mm - 1 &&
+    date.getDate() === dd
+  );
+}
+
+function formatDateInput(input, errorElementId) {
+  let key = input.dataset.lastKey;
+  let val = input.value.replace(/\D/g, ""); // Remove all non-digits
+
+  // Let backspace act naturally
+  if (key === "Backspace") {
+    input.dataset.lastKey = "";
+    return;
+  }
+
+  if (val.length >= 3 && val.length <= 4) {
+    val = val.slice(0, 2) + "/" + val.slice(2);
+  } else if (val.length > 4) {
+    val = val.slice(0, 2) + "/" + val.slice(2, 2 + 2) + "/" + val.slice(4, 8);
+  }
+
+  input.value = val;
+
+  const errorElem = document.getElementById(errorElementId);
+  if (val.length === 10 && !isValidDateFormat(val)) {
+    errorElem.textContent = "⚠ Invalid date";
+  } else {
+    errorElem.textContent = "";
+  }
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+  const startInput = document.getElementById("start_date");
+  const endInput = document.getElementById("end_date");
+
+  [startInput, endInput].forEach(input => {
+    input.addEventListener("keydown", e => {
+      input.dataset.lastKey = e.key;
+    });
+    input.addEventListener("input", () => {
+      formatDateInput(input, input.id === "start_date" ? "start_error" : "end_error");
+    });
+
+    // Add native date picker fallback
+    input.setAttribute("type", "text");
+    input.setAttribute("pattern", "\\d{2}/\\d{2}/\\d{4}");
+  });
+});
+</script>
+
 </body>
 </html>
 
