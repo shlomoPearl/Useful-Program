@@ -1,10 +1,8 @@
 import re
-
 import PyPDF2
 from io import BytesIO
 
 
-# Clean and validate amount string
 def clean_amount_string(amount_str):
     if not amount_str:
         return None
@@ -26,27 +24,22 @@ class ReadBill:
         amounts = []
         if parse_key and parse_key.lower() not in line.lower():
             return amounts
-        line_split = line.split(' ')
-        for i, token in enumerate(line_split):
-            if isinstance(self.currency_symbols, list):
-                currency_match = any(token.lower() == symbol.lower() for symbol in self.currency_symbols)
-            else:
-                currency_match = token.lower() == self.currency_symbols.lower()
-            if currency_match and i < len(line_split) - 1:
-                potential_amount = line_split[i + 1]
-                cleaned_amount = clean_amount_string(potential_amount)
-                if cleaned_amount is not None:
-                    amounts.append(cleaned_amount)
-        for i, token in enumerate(line_split):
-            cleaned_amount = clean_amount_string(token)
-            if cleaned_amount is not None and i < len(line_split) - 1:
-                next_token = line_split[i + 1]
-                if isinstance(self.currency_symbols, list):
-                    currency_match = any(next_token.lower() == symbol.lower() for symbol in self.currency_symbols)
-                else:
-                    currency_match = next_token.lower() == self.currency_symbols.lower()
-                if currency_match:
-                    amounts.append(cleaned_amount)
+
+        tokens = line.split()
+        for i, token in enumerate(tokens):
+            if token in self.currency_symbols:
+                currency_idx = i
+                # Find all numbers in tokens
+                number_indices = [
+                    (j, clean_amount_string(tok))
+                    for j, tok in enumerate(tokens)
+                    if clean_amount_string(tok) is not None
+                ]
+                if number_indices:
+                    # Find the number closest to the currency symbol
+                    closest = min(number_indices, key=lambda x: abs(x[0] - currency_idx))
+                    amounts.append(closest[1])
+                break  # Only process the first currency symbol per line
         return amounts
 
     def parser(self, parse_key=None):
@@ -60,21 +53,21 @@ class ReadBill:
                 pdf_file = PyPDF2.PdfReader(pdf_data)
                 if len(pdf_file.pages) == 0:
                     continue
-                for page_num, page in enumerate(pdf_file.pages):
+                for page in pdf_file.pages:
                     try:
                         text = page.extract_text()
-                        if not text.strip():
+                        if not text or not text.strip():
                             continue
                         lines = text.split('\n')
                         page_total = 0.0
                         for line in lines:
-                            if line.strip():  # Skip empty lines
+                            if line.strip():
                                 amounts = self.extract_amounts_from_line(line, parse_key)
                                 page_total += sum(amounts)
                         bill_dict[date] += page_total
-                    except Exception as e:
+                    except Exception:
                         continue
-            except Exception as e:
+            except Exception:
                 continue
         print("bill dict-", bill_dict)
         return bill_dict
