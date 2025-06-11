@@ -2,3 +2,5 @@
 *.pdf
 t.py
 t1.py
+.env
+venv/
