@@ -26,21 +26,21 @@ class ReadBill:
         if parse_key and parse_key.lower() not in line.lower():
             return amounts
 
-        tokens = line.split()
-        for i, token in enumerate(tokens):
-            if token in self.currency_symbols:
-                currency_idx = i
-                # Find all numbers in tokens
-                number_indices = [
-                    (j, clean_amount_string(tok))
-                    for j, tok in enumerate(tokens)
-                    if clean_amount_string(tok) is not None
-                ]
-                if number_indices:
-                    # Find the number closest to the currency symbol
-                    closest = min(number_indices, key=lambda x: abs(x[0] - currency_idx))
-                    amounts.append(closest[1])
-                break  # Only process the first currency symbol per line
+        # Build regex for all currency symbols
+        currency_pattern = '|'.join(re.escape(sym) for sym in self.currency_symbols)
+        # Match patterns like '₪3.90', '3.90₪', with or without spaces
+        pattern = rf'({currency_pattern})\s*([\d,]+\.\d+|\d+)|([\d,]+\.\d+|\d+)\s*({currency_pattern})'
+
+        for match in re.finditer(pattern, line):
+            # Try both currency before and after
+            if match.group(2):  # currency before
+                amt = clean_amount_string(match.group(2))
+            elif match.group(3):  # currency after
+                amt = clean_amount_string(match.group(3))
+            else:
+                amt = None
+            if amt is not None:
+                amounts.append(amt)
         return amounts
 
     def parser(self, parse_key=None):
@@ -72,34 +72,37 @@ class ReadBill:
                         except Exception:
                             continue
                 elif isinstance(data, str):
-                    # Assume HTML
                     print("HTML")
                     soup = BeautifulSoup(data, "html.parser")
                     text = soup.get_text(separator='\n')
                     lines = text.split('\n')
                     page_total = 0.0
                     i = 0
+                    found_total = False
                     while i < len(lines):
                         line = lines[i].strip()
                         if not line:
                             i += 1
                             continue
-                        if parse_key and parse_key.lower() in line.lower():
+                        if parse_key and parse_key.lower() in line.lower() and not found_total:
                             # Look for amount in the next non-empty line
                             j = i + 1
+                            print("line-", line, "parse_key->", parse_key)
                             while j < len(lines):
                                 next_line = lines[j].strip()
                                 if next_line:
                                     amounts = self.extract_amounts_from_line(next_line, None)
                                     page_total += sum(amounts)
-                                    print("line-", next_line, "amounts->", amounts)
+                                    print("next line-", next_line, "amounts->", amounts)
+                                    found_total = True
                                     break
                                 j += 1
                             i = j  # Skip to the line after the amount
+                            if found_total:
+                                break  # Stop after first TOTAL
                         else:
                             amounts = self.extract_amounts_from_line(line, parse_key)
                             page_total += sum(amounts)
-                            print("line-", line, "amounts->", amounts)
                         i += 1
                     bill_dict[date] += page_total
             except Exception:
