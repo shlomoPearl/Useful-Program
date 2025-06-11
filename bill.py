@@ -1,6 +1,7 @@
 import re
 import PyPDF2
 from io import BytesIO
+from bs4 import BeautifulSoup
 
 
 def clean_amount_string(amount_str):
@@ -44,29 +45,63 @@ class ReadBill:
 
     def parser(self, parse_key=None):
         bill_dict = {}
-        for date in self.date_data_dict.keys():
+        for date, data in self.date_data_dict.items():
             bill_dict[date] = 0.0
             try:
-                pdf_data = BytesIO(self.date_data_dict.get(date))
-                if not pdf_data.getvalue():
-                    continue
-                pdf_file = PyPDF2.PdfReader(pdf_data)
-                if len(pdf_file.pages) == 0:
-                    continue
-                for page in pdf_file.pages:
-                    try:
-                        text = page.extract_text()
-                        if not text or not text.strip():
-                            continue
-                        lines = text.split('\n')
-                        page_total = 0.0
-                        for line in lines:
-                            if line.strip():
-                                amounts = self.extract_amounts_from_line(line, parse_key)
-                                page_total += sum(amounts)
-                        bill_dict[date] += page_total
-                    except Exception:
+                # Detect PDF (bytes) or HTML (str)
+                if isinstance(data, bytes):
+                    print("PDF")
+                    pdf_data = BytesIO(data)
+                    if not pdf_data.getvalue():
                         continue
+                    pdf_file = PyPDF2.PdfReader(pdf_data)
+                    if len(pdf_file.pages) == 0:
+                        continue
+                    for page in pdf_file.pages:
+                        try:
+                            text = page.extract_text()
+                            if not text or not text.strip():
+                                continue
+                            lines = text.split('\n')
+                            page_total = 0.0
+                            for line in lines:
+                                if line.strip():
+                                    amounts = self.extract_amounts_from_line(line, parse_key)
+                                    page_total += sum(amounts)
+                            bill_dict[date] += page_total
+                        except Exception:
+                            continue
+                elif isinstance(data, str):
+                    # Assume HTML
+                    print("HTML")
+                    soup = BeautifulSoup(data, "html.parser")
+                    text = soup.get_text(separator='\n')
+                    lines = text.split('\n')
+                    page_total = 0.0
+                    i = 0
+                    while i < len(lines):
+                        line = lines[i].strip()
+                        if not line:
+                            i += 1
+                            continue
+                        if parse_key and parse_key.lower() in line.lower():
+                            # Look for amount in the next non-empty line
+                            j = i + 1
+                            while j < len(lines):
+                                next_line = lines[j].strip()
+                                if next_line:
+                                    amounts = self.extract_amounts_from_line(next_line, None)
+                                    page_total += sum(amounts)
+                                    print("line-", next_line, "amounts->", amounts)
+                                    break
+                                j += 1
+                            i = j  # Skip to the line after the amount
+                        else:
+                            amounts = self.extract_amounts_from_line(line, parse_key)
+                            page_total += sum(amounts)
+                            print("line-", line, "amounts->", amounts)
+                        i += 1
+                    bill_dict[date] += page_total
             except Exception:
                 continue
         print("bill dict-", bill_dict)

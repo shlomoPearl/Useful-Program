@@ -42,14 +42,11 @@ def decrement_date(date_list):
 
 class Gmail:
 
-    def __init__(self, address, subject, filename='pdf', result_num=36, date_range=[]):
+    def __init__(self, address, subject, result_num=36, date_range=[]):
         self.address = address
         self.subject = subject
-        self.filename = filename
         self.result_num = result_num
         self.date_range = date_range
-        # self.date_range = [parse_date(date_range[0], True, '%d/%m/%Y').isoformat() + 'Z',
-        #                    (parse_date(date_range[1], True, '%d/%m/%Y') + timedelta(days=1)).isoformat() + 'Z']
         self.token_file = "token.json"
         self.SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
         self.credentials = "credentials.json"
@@ -75,7 +72,7 @@ class Gmail:
         return creds
 
     def search_mail(self, creds):
-        query_parts = [f"from:{self.address}", f"filename:{self.filename}"]
+        query_parts = [f"from:{self.address}"]
         if self.subject:
             query_parts.append(f"subject:{self.subject}")
         query_parts.append(f"after:{increment_date(self.date_range[0])}")
@@ -83,31 +80,45 @@ class Gmail:
         query = " ".join(query_parts)
         print(query)
         try:
-            # Call the Gmail API
             service = build("gmail", "v1", credentials=creds)
             results = service.users().messages().list(userId="me", maxResults=self.result_num, q=query).execute()
-            # make it dict to take always the update bill
             date_attachment_dict = {}
-            for message in results['messages']:
-
+            for message in results.get('messages', []):
                 msg = service.users().messages().get(userId='me', id=message['id']).execute()
-                # get the subject and the date
-                for part in msg['payload']['parts']:
-                    if part['filename'] and part['filename'].endswith('.pdf'):
-                        attachment_data = part['body']['attachmentId']
-                        attachment = service.users().messages().attachments() \
-                            .get(userId='me', messageId=message['id'], id=attachment_data).execute()
-                        data = base64.urlsafe_b64decode(attachment['data'].encode('UTF-8'))
-                        for header in msg['payload']['headers']:
-                            # if header['name'] == 'Subject':
-                            #     email_subject = header['value']
-                            #     # if self.key_word is None or self.key_word in email_subject:
-                            #     #     continue
-                            if header['name'] == 'Date':
-                                date_time_list = header['value'].split(' ')
-                                date = decrement_date(date_time_list)
-                                date_attachment_dict[date] = data
-            # print("date attachment dict:", date_attachment_dict)
+                date = None
+                for header in msg['payload']['headers']:
+                    if header['name'] == 'Date':
+                        date_time_list = header['value'].split(' ')
+                        date = decrement_date(date_time_list)
+                        break
+
+                found_pdf = False
+                if 'parts' in msg['payload']:
+                    for part in msg['payload']['parts']:
+                        if part.get('filename', '').endswith('.pdf'):
+                            attachment_data = part['body']['attachmentId']
+                            attachment = service.users().messages().attachments() \
+                                .get(userId='me', messageId=message['id'], id=attachment_data).execute()
+                            data = base64.urlsafe_b64decode(attachment['data'].encode('UTF-8'))
+                            date_attachment_dict[date] = data
+                            found_pdf = True
+                            break  # Only take the first PDF per message
+
+                # If no PDF found, try to get inline HTML
+                if not found_pdf:
+                    # Look for 'text/html' part
+                    html_data = None
+                    if 'parts' in msg['payload']:
+                        for part in msg['payload']['parts']:
+                            if part.get('mimeType') == 'text/html':
+                                html_data = base64.urlsafe_b64decode(part['body']['data']).decode('utf-8')
+                                break
+                    else:
+                        # Single-part message
+                        if msg['payload'].get('mimeType') == 'text/html':
+                            html_data = base64.urlsafe_b64decode(msg['payload']['body']['data']).decode('utf-8')
+                    if html_data and date:
+                        date_attachment_dict[date] = html_data
             return date_attachment_dict
         except HttpError as error:
             print(f"An error occurred: {error}")
