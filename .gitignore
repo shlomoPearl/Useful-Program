@@ -4,3 +4,5 @@ t.py
 t1.py
 .env
 venv/
+t.html
+*png
