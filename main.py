@@ -3,6 +3,7 @@ import tempfile
 import os
 from gmail import Gmail
 from bill import ReadBill
+from gmail_auth import GmailAuth
 from graph_plot import PatymentGraph
 import io
 import matplotlib.pyplot as plt
@@ -26,15 +27,14 @@ def index():
             return "Missing required form fields.", 400
 
         try:
+            auth = GmailAuth()
+            service = auth.get_service()
             gmail_obj = Gmail(
                 address=email_address,
                 subject=subject,
                 date_range=[start_date, end_date],
             )
-            # gmail_obj.credentials = credentials_path
-            creds = gmail_obj.authenticate()
-            attachments = gmail_obj.search_mail(creds)
-
+            attachments = gmail_obj.search_mail(service)
             bill_obj = ReadBill(attachments, currency)
             bill_dict = bill_obj.parser(keyword)
             graph = PatymentGraph(bill_dict)

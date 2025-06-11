@@ -1,15 +1,8 @@
 from __future__ import print_function
 import base64
-import os.path
 from datetime import datetime
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-
-
-# If modifying these scopes, delete the file token.json.
 
 
 # Convert date from dd/mm/yyyy format to yyyy/mm/dd format with month +1
@@ -41,37 +34,13 @@ def decrement_date(date_list):
 
 
 class Gmail:
-
     def __init__(self, address, subject, result_num=36, date_range=[]):
         self.address = address
         self.subject = subject
         self.result_num = result_num
         self.date_range = date_range
-        self.token_file = "token.json"
-        self.SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
-        self.credentials = "credentials.json"
 
-    def authenticate(self):
-        creds = None
-        if os.path.exists(self.token_file):
-            creds = Credentials.from_authorized_user_file(self.token_file, self.SCOPES)
-
-        if not creds or not creds.valid:
-            if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-            else:
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    self.credentials, self.SCOPES,
-                )
-                flow.redirect_uri = 'http://localhost:5000/'
-                creds = flow.run_local_server(port=5000)
-
-            with open(self.token_file, "w") as token:
-                token.write(creds.to_json())
-        print("The authentication was successful")
-        return creds
-
-    def search_mail(self, creds):
+    def search_mail(self, service):
         query_parts = [f"from:{self.address}"]
         if self.subject:
             query_parts.append(f"subject:{self.subject}")
@@ -80,7 +49,6 @@ class Gmail:
         query = " ".join(query_parts)
         print(query)
         try:
-            service = build("gmail", "v1", credentials=creds)
             results = service.users().messages().list(userId="me", maxResults=self.result_num, q=query).execute()
             date_attachment_dict = {}
             for message in results.get('messages', []):
@@ -102,9 +70,7 @@ class Gmail:
                             data = base64.urlsafe_b64decode(attachment['data'].encode('UTF-8'))
                             date_attachment_dict[date] = data
                             found_pdf = True
-                            break  # Only take the first PDF per message
-
-                # If no PDF found, try to get inline HTML
+                            break
                 if not found_pdf:
                     # Look for 'text/html' part
                     html_data = None
@@ -114,7 +80,6 @@ class Gmail:
                                 html_data = base64.urlsafe_b64decode(part['body']['data']).decode('utf-8')
                                 break
                     else:
-                        # Single-part message
                         if msg['payload'].get('mimeType') == 'text/html':
                             html_data = base64.urlsafe_b64decode(msg['payload']['body']['data']).decode('utf-8')
                     if html_data and date:
