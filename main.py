@@ -1,12 +1,9 @@
 from flask import Flask, request, render_template, send_file
-import tempfile
 import os
 from gmail import Gmail
 from bill import ReadBill
 from gmail_auth import GmailAuth
 from graph_plot import PatymentGraph
-import io
-import matplotlib.pyplot as plt
 
 app = Flask(__name__)
 SQLALCHEMY_DATABASE_URI = f'postgresql://{os.getenv("DB_USER")}:{os.getenv("DB_PASS")}@{os.getenv("DB_HOST")}/{os.getenv("DB_NAME")}'
