@@ -6,11 +6,12 @@ from cryptography.fernet import Fernet
 from datetime import datetime, timedelta, timezone
 
 load_dotenv()
-
 fernet = Fernet(os.getenv("KEY"))
+
 
 def hash_email(email: str) -> str:
     return hashlib.sha256(email.encode()).hexdigest()
+
 
 class DBManager:
     def __init__(self):

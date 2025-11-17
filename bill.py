@@ -50,7 +50,6 @@ class ReadBill:
             try:
                 # Detect PDF (bytes) or HTML (str)
                 if isinstance(data, bytes):
-                    print("PDF")
                     pdf_data = BytesIO(data)
                     if not pdf_data.getvalue():
                         continue
