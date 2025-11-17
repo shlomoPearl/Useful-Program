@@ -1,7 +1,7 @@
-from flask import Flask, request, render_template, send_file
 import os
-from gmail import Gmail
+from flask import Flask, request, render_template
 from bill import ReadBill
+from gmail import Gmail
 from gmail_auth import GmailAuth
 from graph_plot import PatymentGraph
 
@@ -35,12 +35,7 @@ def index():
             bill_obj = ReadBill(attachments, currency)
             bill_dict = bill_obj.parser(keyword)
             graph = PatymentGraph(bill_dict)
-            # plt.figure(figsize=(10, 6))
             graph.plot_graph()
-            # img_bytes = io.BytesIO()
-            # plt.savefig(img_bytes, format='png')
-            # img_bytes.seek(0)
-            # plt.close()
             print("FINISH")
 
         except Exception as e:
