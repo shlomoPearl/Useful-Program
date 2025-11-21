@@ -66,7 +66,7 @@ async def handle_form(request: Request,
 
 
 @app.get("/auth/login")
-async def login_redirect():
+async def login_redirect(request: Request):
     auth = GmailAuth()
     flow = auth.create_flow()
     auth_url, state = flow.authorization_url(
@@ -74,11 +74,15 @@ async def login_redirect():
         include_granted_scopes="true",
         prompt="consent"
     )
+    request.session["oauth_state"] = state
     return RedirectResponse(auth_url)
 
 
 @app.get("/oauth2callback")
 async def auth_callback(request: Request, code: str, state: str = None):
+    saved_state = request.session.get("oauth_state")
+    if not saved_state or saved_state != state:
+        raise HTTPException(status_code=400, detail="Invalid OAuth state.")
     auth = GmailAuth()
     try:
         auth.exchange_code(code, state)
@@ -86,7 +90,7 @@ async def auth_callback(request: Request, code: str, state: str = None):
         raise HTTPException(status_code=500, detail=f"OAuth Error: {str(e)}")
     form_data = request.session.pop("data_form", None)
     if not form_data:
-        return RedirectResponse("/", status_code=302)
+        raise HTTPException(status_code=400, detail="Unauthorized callback.")
     return await process_flow(auth, form_data)
 
 
