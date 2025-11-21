@@ -1,51 +1,86 @@
-import os.path
-
-from google.auth.transport.requests import Request
+import os
+from dotenv import load_dotenv
 from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
+from google_auth_oauthlib.flow import Flow
+from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
-# from postgres_db import DBManager
 
+load_dotenv()
 
 class GmailAuth:
     def __init__(self):
-        self.token_file = "token.json"
         self.credentials_file = "credentials.json"
-        self.scopes = ['https://www.googleapis.com/auth/gmail.readonly']
-        # self.db = DBManager()
+        self.token_file = "token.json"
+        self.scopes = ["https://www.googleapis.com/auth/gmail.readonly"]
+        self.redirect_uri = os.getenv("REDIRECT_URI")
+        print(self.redirect_uri)
+        self.creds = None
         self.service = None
         self.user_email = None
-        creds = self._load_or_get_credentials()
-        print("The authentication was successful")
-        self.service = build("gmail", "v1", credentials=creds)
-        self.user_email = self.service.users().getProfile(userId='me').execute()['emailAddress']
-        print(f"Authenticated as {self.user_email}")
+        # self._load_existing_token()
+        # if self.creds and self.creds.valid:
+        #     self._initialize_service()
 
-    def _load_or_get_credentials(self):
-        creds = None
-        # token_json = self.db.load_token(self.user_email)
-        # token_json = self.token_file
-        # if token_json:
-        if os.path.exists(self.token_file):
-            print("%%%%%%%")
-            creds = Credentials.from_authorized_user_file(self.token_file, self.scopes)
-            print("********")
-        if not creds or not creds.valid:
-            print("$$$$$$$$")
-            creds = self._get_new_credentials(creds)
-        return creds
-
-    def _get_new_credentials(self, creds):
+    def load_token(self):
+        if not os.path.exists(self.token_file):
+            return None
+        creds = Credentials.from_authorized_user_file(
+            self.token_file,
+            self.scopes
+        )
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(self.credentials_file, self.scopes, )
-            flow.redirect_uri = 'http://localhost:5000/'
-            creds = flow.run_local_server(port=5000)
-        # self.db.save_token(self.user_email, creds.to_json())
-        with open(self.token_file, 'w') as token:
-            token.write(creds.to_json())
+        self.creds = creds
         return creds
 
+    def create_flow(self):
+        return Flow.from_client_secrets_file(
+            self.credentials_file,
+            redirect_uri=self.redirect_uri,
+            scopes=self.scopes)
+
+    def exchange_code(self, code, state=None):
+        flow = self.create_flow()
+        flow.fetch_token(code=code)
+        self.creds = flow.credentials
+        self.save_token()
+        self.initialize_service()
+        return True
+
+        # auth_url, state = flow.authorization_url(
+        #     access_type="offline",
+        #     include_granted_scopes="true",
+        #     prompt="consent"
+        # )
+        # print("Go to this URL to log in:")
+        # print(auth_url)
+        # print(state)
+        # code = input("Paste the 'code' parameter from the redirect URL: ")
+        # flow.fetch_token(code=code)
+        # self.creds = flow.credentials
+        # self._save_token()
+        # return
+
+    def save_token(self):
+        if self.creds:
+            with open(self.token_file, "w") as f:
+                f.write(self.creds.to_json())
+
+    def initialize_service(self):
+        self.service = build("gmail", "v1", credentials=self.creds)
+        profile = self.service.users().getProfile(userId="me").execute()
+        self.user_email = profile.get("emailAddress")
+
+    # def exchange_code(self, code, state):
+    # flow.redirect_uri = self.redirect_uri
+    # flow.fetch_token(code=code)
+    # self.creds = flow.credentials
+    # self._save_token()
+    # self._initialize_service()
+    #
+    # return True
+
     def get_service(self):
+        if not self.service:
+            raise Exception("Service not authenticated yet.")
         return self.service

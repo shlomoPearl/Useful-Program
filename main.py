@@ -1,48 +1,82 @@
-import os
-from flask import Flask, request, render_template
+from fastapi import FastAPI, Form, Request, HTTPException
+from fastapi.templating import Jinja2Templates
+from fastapi.responses import HTMLResponse, RedirectResponse
+from pydantic import BaseModel
 from bill import ReadBill
 from gmail import Gmail
 from gmail_auth import GmailAuth
 from graph_plot import PatymentGraph
 
-app = Flask(__name__)
-# SQLALCHEMY_DATABASE_URI = f'postgresql://{os.getenv("DB_USER")}:{os.getenv("DB_PASS")}@{os.getenv("DB_HOST")}/{os.getenv("DB_NAME")}'
-# SQLALCHEMY_TRACK_MODIFICATIONS = False
+app = FastAPI()
+templates = Jinja2Templates(directory="templates")
 
 
-@app.route("/", methods=["GET", "POST"])
-def index():
-    if request.method == "POST":
-        email_address = request.form.get("email")
-        subject = request.form.get("subject")
-        keyword = request.form.get("keyword")
-        currency = request.form.get("currency")
-        start_date = request.form.get("start_date")
-        end_date = request.form.get("end_date")
-
-        if not all([email_address, start_date, end_date, currency]):
-            return "Missing required form fields.", 400
-
-        try:
-            auth = GmailAuth()
-            service = auth.get_service()
-            gmail_obj = Gmail(
-                address=email_address,
-                subject=subject,
-                date_range=[start_date, end_date],
-            )
-            attachments = gmail_obj.search_mail(service)
-            bill_obj = ReadBill(attachments, currency)
-            bill_dict = bill_obj.parser(keyword)
-            graph = PatymentGraph(bill_dict)
-            graph.plot_graph()
-            print("FINISH")
-
-        except Exception as e:
-            return f"Error: {str(e)}", 500
-
-    return render_template("index.html")
+class FormData(BaseModel):
+    email: str
+    subject: str | None = None
+    keyword: str | None = None
+    currency: str
+    start_date: str
+    end_date: str
 
 
-if __name__ == "__main__":
-    app.run(debug=True, port=5050)
+@app.get("/", response_class=HTMLResponse)
+async def index_get(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
+
+
+@app.post("/")
+async def index_post(
+        email: str = Form(...),
+        subject: str = Form(None),
+        keyword: str = Form(None),
+        currency: str = Form(...),
+        start_date: str = Form(...),
+        end_date: str = Form(...)
+):
+    if not all([email, start_date, end_date, currency]):
+        raise HTTPException(status_code=400, detail="Missing required form fields.")
+    try:
+        auth = GmailAuth()
+        creds = auth.load_token()
+        if not creds:
+            return RedirectResponse("/auth/login", status_code=303)
+        auth.initialize_service()
+        service = auth.get_service()
+        gmail_obj = Gmail(
+            address=email,
+            subject=subject,
+            date_range=[start_date, end_date],
+        )
+        attachments = gmail_obj.search_mail(service)
+        bill_obj = ReadBill(attachments, currency)
+        bill_dict = bill_obj.parser(keyword)
+        graph = PatymentGraph(bill_dict)
+        graph.plot_graph()
+        return {"status": "finished"}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/auth/login")
+async def login():
+    auth = GmailAuth()
+    flow = auth.create_flow()
+    auth_url, state = flow.authorization_url(
+        access_type="offline",
+        include_granted_scopes="true",
+        prompt="consent"
+    )
+    return RedirectResponse(auth_url)
+
+
+@app.get("/oauth2callback")
+async def auth_callback(code: str, state: str = None):
+    auth = GmailAuth()
+    try:
+        auth.exchange_code(code, state)
+        return RedirectResponse("/", status_code=303)
+
+    except Exception as e:
+        return f"Error: {str(e)}"

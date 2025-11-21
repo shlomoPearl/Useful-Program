@@ -25,5 +25,5 @@ class PatymentGraph:
         plt.title(self.title)
         plt.grid(False)
         # plt.show(
-        plt.savefig('2024_2.png')
+        plt.savefig('V1.png')
         plt.close()
