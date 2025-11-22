@@ -96,7 +96,7 @@ async def auth_callback(request: Request, code: str, state: str = None):
 
 async def process_flow(auth: GmailAuth, data: dict):
     try:
-        auth.initialize_service()
+        # auth.initialize_service()
         service = auth.get_service()
         gmail_client = Gmail(
             address=data["email"],
