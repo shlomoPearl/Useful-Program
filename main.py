@@ -1,18 +1,47 @@
-from fastapi import FastAPI, Form, Request, HTTPException
+from fastapi import FastAPI, Form, Request, HTTPException, Depends
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse, RedirectResponse
-from pydantic import BaseModel
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+from googleapiclient.discovery import build
 from starlette.middleware.sessions import SessionMiddleware
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
 import os
 from dotenv import load_dotenv
+from datetime import datetime
 from bill import ReadBill
 from gmail import Gmail
 from gmail_auth import GmailAuth
 from graph_plot import PatymentGraph
+from db import get_db
+from storage import *
+
+
+load_dotenv()
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
-app.add_middleware(SessionMiddleware, os.getenv("KEY"))
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+KEY = os.getenv("KEY")
+if not KEY:
+    raise RuntimeError("KEY not set in environment variables")
+
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=KEY,
+    session_cookie="session_id",
+    max_age=86400,  # 24 hours
+    same_site="lax",
+    https_only=(ENVIRONMENT == "production")
+)
+# CORS maybe for better frontend in the future
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=["http://localhost:3000"] if ENVIRONMENT == "development" else ["https://your-domain.com"],
+#     allow_credentials=True,
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
 
 
 class FormData(BaseModel):
@@ -24,42 +53,56 @@ class FormData(BaseModel):
     end_date: str
 
 
+def get_current_user(request: Request, db: Session = Depends(get_db)) -> str | None:
+    session_id = request.cookies.get("session_id")
+    if not session_id:
+        return None
+    g_id = validate_session(db, session_id)
+    return g_id
+
+
 @app.get("/", response_class=HTMLResponse)
-async def index_get(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+async def index_get(request: Request, db: Session = Depends(get_db)):
+    user_id = get_current_user(request, db)
+    if user_id:
+        return templates.TemplateResponse(
+            "index.html",
+            {"request": request, "logged_in": True, "user_id": user_id}
+        )
+    return templates.TemplateResponse(
+        "index.html",
+        {"request": request, "logged_in": False}
+    )
 
 
 @app.post("/")
 async def handle_form(request: Request,
+                      db: Session = Depends(get_db),
                       email: str = Form(...),
                       subject: str = Form(None),
                       keyword: str = Form(None),
                       currency: str = Form(...),
                       start_date: str = Form(...),
                       end_date: str = Form(...)):
+    g_id = get_current_user(request, db)
     if not all([email, start_date, end_date, currency]):
         raise HTTPException(status_code=400, detail="Missing required form fields.")
+    form_data = {
+        "email": email,
+        "subject": subject,
+        "keyword": keyword,
+        "currency": currency,
+        "start_date": start_date,
+        "end_date": end_date,
+    }
     try:
-        auth = GmailAuth()
-        creds = auth.load_token()
-        if not creds:
-            request.session["data_form"] = {
-                "email": email,
-                "subject": subject,
-                "keyword": keyword,
-                "currency": currency,
-                "start_date": start_date,
-                "end_date": end_date,
-            }
-            return RedirectResponse("/auth/login", status_code=303)
-        return await process_flow(auth, {
-            "email": email,
-            "subject": subject,
-            "keyword": keyword,
-            "currency": currency,
-            "start_date": start_date,
-            "end_date": end_date,
-        })
+        if g_id:
+            token_dict = load_user_token(db, g_id)
+            if token_dict:
+                return await process_flow(db, token_dict, form_data)
+
+        request.session["form_data"] = form_data
+        return RedirectResponse("/auth/login", status_code=303)
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -79,36 +122,68 @@ async def login_redirect(request: Request):
 
 
 @app.get("/oauth2callback")
-async def auth_callback(request: Request, code: str, state: str = None):
+async def auth_callback(request: Request, code: str,
+                        state: str = None,
+                        db: Session = Depends(get_db)):
     saved_state = request.session.get("oauth_state")
     if not saved_state or saved_state != state:
         raise HTTPException(status_code=400, detail="Invalid OAuth state.")
-    auth = GmailAuth()
+
     try:
-        auth.exchange_code(code, state)
+        auth = GmailAuth()
+        user_info = auth.exchange_code(code)
+        save_user_token(db,
+                        user_info["user_id"],
+                        user_info["email"],
+                        user_info["token_dict"]
+                        )
+        session_id = create_session(db, user_info["user_id"])
+        request.session["session_id"] = session_id
+        form_data = request.session.pop("form_data", None)
+        if form_data:
+            return await process_flow(db, user_info["token_dict"], form_data)
+        return RedirectResponse("/", status_code=303)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"OAuth Error: {str(e)}")
-    form_data = request.session.pop("data_form", None)
-    if not form_data:
-        raise HTTPException(status_code=400, detail="Unauthorized callback.")
-    return await process_flow(auth, form_data)
 
 
-async def process_flow(auth: GmailAuth, data: dict):
+@app.post("/logout")
+async def logout(request: Request, db: Session = Depends(get_db)):
+    session_id = request.cookies.get("session_id")
+    if session_id:
+        invalidate_session(db, session_id)
+    request.session.clear()
+    return RedirectResponse("/", status_code=303)
+
+
+async def process_flow(db: Session, token_dict: dict, form_data: dict):
     try:
-        # auth.initialize_service()
-        service = auth.get_service()
+        creds = GmailAuth.load_credentials_from_token_dict(token_dict)
+        if not creds:
+            raise Exception("Failed to load credentials")
+        service = build("gmail", "v1", credentials=creds)
         gmail_client = Gmail(
-            address=data["email"],
-            subject=data.get("subject"),
-            date_range=[data["start_date"], data["end_date"]],
+            address=form_data["email"],
+            subject=form_data.get("subject"),
+            date_range=[form_data["start_date"], form_data["end_date"]],
         )
         attachments = gmail_client.search_mail(service)
-        bill_reader = ReadBill(attachments, data["currency"])
-        bill_dict = bill_reader.parser(data.get("keyword"))
+        bill_reader = ReadBill(attachments, form_data["currency"])
+        bill_dict = bill_reader.parser(form_data.get("keyword"))
         graph = PatymentGraph(bill_dict)
         graph.plot_graph()
         return {"status": "finished"}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Processing error: {str(e)}")
+
+
+@app.on_event("startup")
+async def startup_event():
+    from db import SessionLocal
+    db = SessionLocal()
+    try:
+        cleanup_expired_sessions(db)
+        cleanup_expired_tokens(db)
+    finally:
+        db.close()

@@ -11,7 +11,6 @@ load_dotenv()
 class GmailAuth:
     def __init__(self):
         self.credentials_file = "credentials.json"
-        self.token_file = "token.json"
         self.scopes = ["https://www.googleapis.com/auth/gmail.readonly",
                        "https://www.googleapis.com/auth/userinfo.profile"]
         self.redirect_uri = os.getenv("REDIRECT_URI")
@@ -20,42 +19,35 @@ class GmailAuth:
         self.user_email = None
         self.user_id = None
 
-    def load_token(self):
-        if not os.path.exists(self.token_file):
-            return None
-        creds = Credentials.from_authorized_user_file(
-            self.token_file,
-            self.scopes
-        )
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        self.creds = creds
-        self.initialize_service()
-        return creds
-
     def create_flow(self):
         return Flow.from_client_secrets_file(
             self.credentials_file,
             redirect_uri=self.redirect_uri,
             scopes=self.scopes)
 
-    def exchange_code(self, code, state=None):
+    def exchange_code(self, code: str):
         flow = self.create_flow()
         flow.fetch_token(code=code)
         self.creds = flow.credentials
-        self.save_token()
         self.initialize_service()
-        return True
-
-    def save_token(self):
-        if self.creds:
-            with open(self.token_file, "w") as f:
-                f.write(self.creds.to_json())
+        return {
+            "user_id": self.user_id,
+            "email": self.user_email,
+            "token_dict": {
+                "token": self.creds.token,
+                "refresh_token": self.creds.refresh_token,
+                "token_uri": self.creds.token_uri,
+                "client_id": self.creds.client_id,
+                "client_secret": self.creds.client_secret,
+                "scopes": self.creds.scopes
+            }
+        }
 
     def initialize_service(self):
         self.service = build("gmail", "v1", credentials=self.creds)
         profile = self.service.users().getProfile(userId="me").execute()
         self.user_email = profile.get("emailAddress")
+
         oauth2_service = build('oauth2', 'v2', credentials=self.creds)
         userinfo = oauth2_service.userinfo().get().execute()
         self.user_id = userinfo["id"]
@@ -64,3 +56,21 @@ class GmailAuth:
         if not self.service:
             raise Exception("Service not authenticated yet.")
         return self.service
+
+    @staticmethod
+    def load_credentials_from_token_dict(token_dict: dict):
+        try:
+            creds = Credentials(
+                token=token_dict.get("token"),
+                refresh_token=token_dict.get("refresh_token"),
+                token_uri=token_dict.get("token_uri"),
+                client_id=token_dict.get("client_id"),
+                client_secret=token_dict.get("client_secret"),
+                scopes=token_dict.get("scopes")
+            )
+            if creds.expired and creds.refresh_token:
+                creds.refresh(Request())
+            return creds
+        except Exception as e:
+            print(f"Error reconstructing credentials: {e}")
+            return None
