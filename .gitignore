@@ -1,8 +1,9 @@
 *.json
 *.pdf
-t.py
-t1.py
+test*.py
 .env
 venv/
 t.html
 *png
+/.idea*
+./__pycache__/
