@@ -28,6 +28,6 @@ class SessionToken(Base):
     is_active = Column(Boolean, default=True)
 
     __table_args__ = (
-        Index('idx_session_google_id', 'google_id'),
+        Index('idx_session_google_id', 'g_id'),
         Index('idx_session_expires', 'expires_at'),
     )
