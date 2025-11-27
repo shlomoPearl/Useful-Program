@@ -5,17 +5,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from googleapiclient.discovery import build
 from starlette.middleware.sessions import SessionMiddleware
 from pydantic import BaseModel
-from sqlalchemy.orm import Session
-import os
-from dotenv import load_dotenv
-from datetime import datetime
 from bill import ReadBill
 from gmail import Gmail
 from gmail_auth import GmailAuth
 from graph_plot import PatymentGraph
-from db import get_db
+from db import get_db, SessionLocal
 from storage import *
-
 
 load_dotenv()
 
@@ -34,6 +29,8 @@ app.add_middleware(
     same_site="lax",
     https_only=(ENVIRONMENT == "production")
 )
+
+
 # CORS maybe for better frontend in the future
 # app.add_middleware(
 #     CORSMiddleware,
@@ -54,7 +51,7 @@ class FormData(BaseModel):
 
 
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> str | None:
-    session_id = request.cookies.get("session_id")
+    session_id = request.session.get("session_id")
     if not session_id:
         return None
     g_id = validate_session(db, session_id)
@@ -180,7 +177,6 @@ async def process_flow(db: Session, token_dict: dict, form_data: dict):
 
 @app.on_event("startup")
 async def startup_event():
-    from db import SessionLocal
     db = SessionLocal()
     try:
         cleanup_expired_sessions(db)

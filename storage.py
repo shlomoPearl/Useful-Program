@@ -31,23 +31,34 @@ def save_user_token(db: Session, user_id: str, email: str, token_dict: dict):
         )
         db.add(user)
     db.commit()
+    db.flush()
 
 
 def load_user_token(db: Session, user_id: str) -> dict | None:
-    row = db.query(User).filter(
-        User.g_id == user_id,
-        User.is_active is True,
-        User.expires_at > datetime.now(timezone.utc)
-    ).one_or_none()
-    if not row:
-        return None
     try:
-        row.last_accessed = datetime.now(timezone.utc)
         db.commit()
-        raw = decrypt_bytes(row.token)
-        return json.loads(raw.decode())
+        row = db.query(User).filter(
+            User.g_id == user_id,
+            User.is_active == True,
+            User.expires_at > datetime.now(timezone.utc)
+        ).one_or_none()
+        if row:
+            row.last_accessed = datetime.now(timezone.utc)
+            db.commit()
+            db.flush()
+
+            try:
+                raw = decrypt_bytes(row.token)
+                token_dict = json.loads(raw.decode())
+                return token_dict
+            except Exception as e:
+                print(f"Token decryption error: {e}")
+                return None
+        else:
+            return None
     except Exception as e:
-        print(f"Token decryption error: {e}")
+        print(f"Database error in load_user_token: {e}")
+        db.rollback()
         return None
 
 
@@ -61,36 +72,70 @@ def create_session(db: Session, user_id: str) -> str:
     )
     db.add(session)
     db.commit()
+    db.flush()
+    verify = db.query(SessionToken).filter(
+        SessionToken.session_id == session_id
+    ).one_or_none()
     return session_id
 
 
 def validate_session(db: Session, session_id: str) -> str | None:
-    session = db.query(SessionToken).filter(
-        SessionToken.session_id == session_id,
-        SessionToken.is_active is True,
-        SessionToken.expires_at > datetime.now(timezone.utc)
-    ).one_or_none()
-    return session.g_id if session else None
+    try:
+        db.commit()
+        now = datetime.now(timezone.utc)
+        session = db.query(SessionToken).filter(
+            SessionToken.session_id == session_id,
+            SessionToken.is_active == True,
+            SessionToken.expires_at > now
+        ).one_or_none()
+
+        if session:
+            g_id = session.g_id
+            db.commit()
+            return g_id
+        else:
+            return None
+    except Exception as e:
+        print(f"Database error in validate_session: {e}")
+        import traceback
+        traceback.print_exc()
+        db.rollback()
+        return None
 
 
 def invalidate_session(db: Session, session_id: str):
-    session = db.query(SessionToken).filter(
-        SessionToken.session_id == session_id
-    ).one_or_none()
-    if session:
-        session.is_active = False
-        db.commit()
+    try:
+        session = db.query(SessionToken).filter(
+            SessionToken.session_id == session_id
+        ).one_or_none()
+        if session:
+            session.is_active = False
+            db.commit()
+            db.flush()
+    except Exception as e:
+        print(f"Error invalidating session: {e}")
+        db.rollback()
 
 
 def cleanup_expired_sessions(db: Session):
-    db.query(SessionToken).filter(
-        SessionToken.expires_at < datetime.now(timezone.utc)
-    ).delete()
-    db.commit()
+    try:
+        db.query(SessionToken).filter(
+            SessionToken.expires_at < datetime.now(timezone.utc)
+        ).delete()
+        db.commit()
+        db.flush()
+    except Exception as e:
+        print(f"Error cleaning up sessions: {e}")
+        db.rollback()
 
 
 def cleanup_expired_tokens(db: Session):
-    db.query(User).filter(
-        User.expires_at < datetime.now(timezone.utc)
-    ).delete()
-    db.commit()
+    try:
+        db.query(User).filter(
+            User.expires_at < datetime.now(timezone.utc)
+        ).delete()
+        db.commit()
+        db.flush()
+    except Exception as e:
+        print(f"Error cleaning up tokens: {e}")
+        db.rollback()
