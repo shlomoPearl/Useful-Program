@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Payment Graph</title>
+</head>
+
+<body style="font-family: Arial; margin: 20px;">
+<!-- Buttons -->
+<a href="/" style="padding:10px 15px; background:#007bff; color:white;
+        border-radius:5px; text-decoration:none;">
+    🏠 Create Another Graph
+</a>
+
+<a href="/download?format=pdf"
+   style="padding:10px 15px; background:#28a745; color:white;
+       border-radius:5px; margin-left:10px; text-decoration:none;">
+    📄 Download PDF
+</a>
+
+<a href="/download?format=png"
+   style="padding:10px 15px; background:#17a2b8; color:white;
+       border-radius:5px; margin-left:10px; text-decoration:none;">
+    🖼 Download PNG
+</a>
+
+<br>
+<!-- Plotly graph -->
+
+<div id="graph-container" style="margin-top: 40px;">
+    {{ graph_html | safe }}
+</div>
+
+<br><br>
+
+</body>
+</html>
