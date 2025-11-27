@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Form, Request, HTTPException, Depends
+from fastapi import FastAPI, Form,Response, Request, HTTPException, Depends
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from bill import ReadBill
 from gmail import Gmail
 from gmail_auth import GmailAuth
-from graph_plot import get_html_graph
+from graph_plot import *
 from db import get_db, SessionLocal
 from storage import *
 
@@ -96,7 +96,7 @@ async def handle_form(request: Request,
         if g_id:
             token_dict = load_user_token(db, g_id)
             if token_dict:
-                return await process_flow(db, token_dict, form_data)
+                return await process_flow(request, token_dict, form_data)
 
         request.session["form_data"] = form_data
         return RedirectResponse("/auth/login", status_code=303)
@@ -138,7 +138,7 @@ async def auth_callback(request: Request, code: str,
         request.session["session_id"] = session_id
         form_data = request.session.pop("form_data", None)
         if form_data:
-            return await process_flow(db, user_info["token_dict"], form_data)
+            return await process_flow(request, user_info["token_dict"], form_data)
         return RedirectResponse("/", status_code=303)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"OAuth Error: {str(e)}")
@@ -146,14 +146,14 @@ async def auth_callback(request: Request, code: str,
 
 @app.post("/logout")
 async def logout(request: Request, db: Session = Depends(get_db)):
-    session_id = request.cookies.get("session_id")
+    session_id = request.session.get("session_id")
     if session_id:
         invalidate_session(db, session_id)
     request.session.clear()
     return RedirectResponse("/", status_code=303)
 
 
-async def process_flow(db: Session, token_dict: dict, form_data: dict):
+async def process_flow(request: Request, token_dict: dict, form_data: dict):
     try:
         creds = GmailAuth.load_credentials_from_token_dict(token_dict)
         if not creds:
@@ -167,12 +167,34 @@ async def process_flow(db: Session, token_dict: dict, form_data: dict):
         attachments = gmail_client.search_mail(service)
         bill_reader = ReadBill(attachments, form_data["currency"])
         bill_dict = bill_reader.parser(form_data.get("keyword"))
-        graph = get_html_graph(bill_dict)
-        # graph.plot_graph()
-        return HTMLResponse(graph)
-
+        request.session["bill_dict"] = bill_dict
+        # if I add title option -> save it in session to
+        graph = GraphPlot(bill_dict)
+        graph_html = graph.get_html_graph()
+        return templates.TemplateResponse(
+            "graph.html", {
+                "request": request,
+                "graph_html": graph_html,
+            })
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Processing error: {str(e)}")
+
+
+@app.get("/download")
+def download_graph(request: Request, format: str):
+    bill_dict = request.session.get("bill_dict")
+    if not bill_dict:
+        raise HTTPException(status_code=400, detail="No bill data found in session")
+    graph = GraphPlot(bill_dict)
+    file_bytes = graph.download_by_f(format)
+    media = "image" if format == "png" else "application"
+    return Response(
+        content=file_bytes,
+        media_type=f"{media}/{format}",
+        headers={
+            "Content-Disposition": f"attachment; filename=graph.{format}"
+        }
+    )
 
 
 @app.on_event("startup")
