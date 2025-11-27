@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from bill import ReadBill
 from gmail import Gmail
 from gmail_auth import GmailAuth
-from graph_plot import PatymentGraph
+from graph_plot import get_html_graph
 from db import get_db, SessionLocal
 from storage import *
 
@@ -167,9 +167,9 @@ async def process_flow(db: Session, token_dict: dict, form_data: dict):
         attachments = gmail_client.search_mail(service)
         bill_reader = ReadBill(attachments, form_data["currency"])
         bill_dict = bill_reader.parser(form_data.get("keyword"))
-        graph = PatymentGraph(bill_dict)
-        graph.plot_graph()
-        return {"status": "finished"}
+        graph = get_html_graph(bill_dict)
+        # graph.plot_graph()
+        return HTMLResponse(graph)
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Processing error: {str(e)}")

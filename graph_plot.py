@@ -1,30 +1,16 @@
-import matplotlib
-
-matplotlib.use('Agg')
-from datetime import datetime
-import matplotlib.pyplot as plt
+import plotly.graph_objs as go
+import plotly.io as pio
 
 
-class PatymentGraph:
-    def __init__(self, bill_dict, title='Payment account graph'):
-        self.bill_dict = bill_dict
-        self.title = title
+def get_html_graph(bill_dict):
+    dates = list(bill_dict.keys())
+    values = list(bill_dict.values())
 
-    def plot_graph(self):
-        dates = [datetime.strptime(date, '%m/%Y') for date in self.bill_dict.keys()]
-        sorted_dates = sorted(dates)
-        sorted_dates_lst = [date.strftime('%m/%Y') for date in sorted_dates]
-        # Get corresponding values in the sorted order
-        values = [self.bill_dict[date] for date in sorted_dates_lst]
-
-        for i, value in enumerate(values):
-            plt.text(i, value + 5, str(value), ha='center', fontsize=8)
-        plt.bar(sorted_dates_lst, values)
-        plt.xticks(rotation=40)  # Rotate the x-axis labels for better readability
-        plt.xlabel('Date')
-        plt.ylabel('Paid')
-        plt.title(self.title)
-        plt.grid(False)
-        # plt.show(
-        plt.savefig('V1.png')
-        plt.close()
+    fig = go.Figure(data=[go.Bar(x=dates, y=values, text=values, textposition='auto')])
+    fig.update_layout(
+        title="Payment Over Time",
+        xaxis_title="Date",
+        yaxis_title="Amount Paid",
+        template="plotly_white"
+    )
+    return fig.to_html(config={"displayModeBar": False})
