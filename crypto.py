@@ -4,9 +4,9 @@ from cryptography.fernet import Fernet
 from dotenv import load_dotenv
 
 load_dotenv()
-FERNET_KEY = os.getenv("KEY")
+FERNET_KEY = os.getenv("ENC_KEY")
 if not FERNET_KEY:
-    raise RuntimeError("KEY missing")
+    raise RuntimeError("ENC_KEY missing")
 
 fernet = Fernet(FERNET_KEY.encode())
 
