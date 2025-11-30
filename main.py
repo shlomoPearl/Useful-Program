@@ -10,6 +10,7 @@ from gmail import Gmail
 from gmail_auth import GmailAuth
 from graph_plot import *
 from db import get_db, SessionLocal, Base, engine
+from model import User, SessionToken
 from storage import *
 
 load_dotenv()
