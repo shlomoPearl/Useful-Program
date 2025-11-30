@@ -2,6 +2,7 @@
 *.pdf
 test*
 .env
+*docker*
 venv/
 t.html
 *png
