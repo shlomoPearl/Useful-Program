@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Form,Response, Request, HTTPException, Depends
+from fastapi import FastAPI, Form, Response, Request, HTTPException, Depends
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,7 +9,7 @@ from bill import ReadBill
 from gmail import Gmail
 from gmail_auth import GmailAuth
 from graph_plot import *
-from db import get_db, SessionLocal
+from db import get_db, SessionLocal, Base, engine
 from storage import *
 
 load_dotenv()
@@ -199,6 +199,8 @@ def download_graph(request: Request, format: str):
 
 @app.on_event("startup")
 async def startup_event():
+    Base.metadata.create_all(bind=engine)
+    print("DB tabels raedy")
     db = SessionLocal()
     try:
         cleanup_expired_sessions(db)
