@@ -72,25 +72,24 @@ A FastAPI-based web application that automatically processes bill invoices from 
 ## Project Structure 📁
 
 ```
-invoice-graph/
+Invoice-Graph-Web-App/
 ├── main.py                 # FastAPI application entry point
 ├── storage.py             # Database operations (sessions, tokens)
 ├── model.py               # SQLAlchemy models
 ├── db.py                  # Database configuration
 ├── gmail_auth.py          # Google OAuth authentication
 ├── gmail.py               # Gmail API integration
-├── bill.py                # Bill/invoice parser
+├── bill.py                # invoice parser
 ├── graph_plot.py          # Graph generation
 ├── crypto.py              # Encryption utilities
 ├── templates/             # Jinja2 HTML templates
-│   └── index.html
-├── static/                # CSS, JS, images
+│    ├── graph.html
+│    └── index.html
 ├── requirements.txt       # Python dependencies
 ├── Dockerfile            # Docker image definition
 ├── docker-compose.yml    # Docker services configuration
-├── .env.example          # Environment template (committed)
-├── .env.development      # Local config (NOT committed)
-├── .env.production       # Production config (NOT committed)
+├── .env.example          # Environment template
+├── .env      # Local config (NOT committed)
 ├── .gitignore
 └── README.md
 ```
@@ -113,7 +112,8 @@ invoice-graph/
    - Extract payment data
    - Generate a visual graph
 5. **Download graph:** Export as PNG or PDF
-
+   - Example of graph.png output-
+![Example graph output](graph.png)
 ---
 
 ## License 📄
