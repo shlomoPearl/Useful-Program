@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: aouth_postgres
+    environment:
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: ${DB_NAME}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  fastapi:
+    build: .
+    container_name: server_fastapi
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - ./templates:/app/templates
+      - ./static:/app/static
+    command: >
+      sh -c "uvicorn main:app --host 0.0.0.0 --port 8000"
+
+volumes:
+  postgres_data:
