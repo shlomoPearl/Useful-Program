@@ -5,5 +5,5 @@ test*
 venv/
 t.html
 *png
-/.idea*
-./__pycache__/
+.idea
+__pycache__
