@@ -36,30 +36,6 @@ A FastAPI-based web application that automatically processes bill invoices from 
 - **Let's Encrypt** - SSL/TLS certificates
 
 ---
-
-## Architecture 🏗️
-
-```
-┌─────────────┐
-│   Browser   │
-└──────┬──────┘
-       │ HTTPS
-       ▼
-┌─────────────┐
-│    Nginx    │ (Reverse Proxy + SSL)
-└──────┬──────┘
-       │ HTTP
-       ▼
-┌─────────────┐
-│   FastAPI   │ (Application Logic)
-└──────┬──────┘
-       │
-       ├─────────────► PostgreSQL (User data, sessions, encrypted tokens)
-       │
-       └─────────────► Gmail API (Fetch emails & attachments)
-```
-
----
 # Database Schema 🗄️
 
 ## Overview
