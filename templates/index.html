@@ -3,132 +3,120 @@
 <head>
     <meta charset="UTF-8">
     <title>Bill Parser</title>
+
+    <!-- Tailwind CSS (CDN, zero config) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 600px;
-            margin: auto;
-            padding: 20px;
+        /* Tooltip styling override */
+        .tooltiptext {
+            @apply invisible opacity-0 absolute bg-gray-800 text-white text-sm rounded-lg p-3 transition-opacity duration-300 w-64;
+            bottom: 120%;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20;
         }
-        form {
-            display: flex;
-            flex-direction: column;
-        }
-        label {
-            margin-top: 10px;
-        }
-        input, select, button {
-            padding: 8px;
-            font-size: 16px;
-            margin-top: 5px;
-        }
-        button {
-            margin-top: 20px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #45a049;
+        .tooltip:hover .tooltiptext {
+            @apply visible opacity-100;
         }
     </style>
 </head>
-<body>
-    <h2>Bill Parser</h2>
-    <form method="post" enctype="multipart/form-data">
-        <label for="email">Sender Email Address:</label>
-        <input type="email" id="email" name="email" required>
 
-        <style>
-          .tooltip {
-            position: relative;
-            display: inline-block;
-            cursor: pointer;
-            color: #007bff;
-          }
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
 
-          .tooltip .tooltiptext {
-            visibility: hidden;
-            width: 280px;
-            background-color: #333;
-            color: #fff;
-            text-align: left;
-            padding: 10px;
-            border-radius: 6px;
-            position: absolute;
-            z-index: 1;
-            bottom: 125%; /* Position above the icon */
-            left: 50%;
-            margin-left: -140px;
-            opacity: 0;
-            transition: opacity 0.3s;
-          }
+    <div class="bg-white shadow-xl rounded-2xl p-8 w-full max-w-xl border border-gray-200">
+        <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">
+            Bill Parser
+        </h2>
 
-          .tooltip:hover .tooltiptext {
-            visibility: visible;
-            opacity: 1;
-          }
-        </style>
+        <form method="post" enctype="multipart/form-data" class="space-y-5">
 
-<!--        <label for="subject">Subject Line:</label>-->
-<!--        <input type="text" id="subject" name="subject">-->
+            <!-- Email -->
+            <div>
+                <label class="block font-medium text-gray-700 mb-1" for="email">Sender Email Address</label>
+                <input type="email" id="email" name="email" required
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400">
+            </div>
 
-<!--        <label for="keyword">Keyword in PDF:</label>-->
-<!--        <input type="text" id="keyword" name="keyword">-->
+            <!-- Subject -->
+            <div>
+                <label class="block font-medium text-gray-700 mb-1" for="subject">
+                    Subject (optional)
 
-        <label for="subject">Subject (optional)
-          <span class="tooltip">❓
-            <span class="tooltiptext">
-              Filter emails by subject. Useful if the same sender emails multiple types of invoices. Example: "Water Bill".
-            </span>
-          </span>
-        </label>
-        <input type="text" id="subject" name="subject" placeholder="e.g., Electricity Invoice">
+                    <span class="tooltip text-blue-600 cursor-pointer ml-1">❓
+                        <span class="tooltiptext">
+                            Filter emails by subject (e.g. "Water Bill") if the sender sends multiple invoice types.
+                        </span>
+                    </span>
+                </label>
 
-        <br>
+                <input type="text" id="subject" name="subject" placeholder="e.g., Electricity Invoice"
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400">
+            </div>
 
-        <label for="keyword">Keyword (optional)
-          <span class="tooltip">❓
-            <span class="tooltiptext">
-              Filter invoice content by keyword. Useful if one invoice includes several services. Example: "Maintenance".
-            </span>
-          </span>
-        </label>
-        <input type="text" id="keyword" name="keyword" placeholder="e.g., Water">
+            <!-- Keyword -->
+            <div>
+                <label class="block font-medium text-gray-700 mb-1" for="keyword">
+                    Keyword (optional)
 
+                    <span class="tooltip text-blue-600 cursor-pointer ml-1">❓
+                        <span class="tooltiptext">
+                            Filter invoice content by keyword (e.g. "Maintenance") if invoices contain several services.
+                        </span>
+                    </span>
+                </label>
 
+                <input type="text" id="keyword" name="keyword" placeholder="e.g., Water"
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400">
+            </div>
 
-        <label for="currency">Currency Symbol:</label>
-        <select name="currency" id="currency" required>
-            <option value="₪">₪ - Israeli Shekel</option>
-            <option value="$">$ - US Dollar</option>
-            <option value="€">€ - Euro</option>
-            <option value="£">£ - British Pound</option>
-            <option value="₹">₹ - Indian Rupee</option>
-            <option value="¥">¥ - Japanese Yen</option>
-            <option value="₩">₩ - South Korean Won</option>
-        </select>
+            <!-- Currency -->
+            <div>
+                <label class="block font-medium text-gray-700 mb-1" for="currency">Currency Symbol</label>
+                <select id="currency" name="currency" required
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-400">
+                    <option value="₪">₪ - Israeli Shekel</option>
+                    <option value="$">$ - US Dollar</option>
+                    <option value="€">€ - Euro</option>
+                    <option value="£">£ - British Pound</option>
+                    <option value="₹">₹ - Indian Rupee</option>
+                    <option value="¥">¥ - Japanese Yen</option>
+                    <option value="₩">₩ - South Korean Won</option>
+                </select>
+            </div>
 
-       <label for="start_date">Start Date:</label>
-        <input type="text" id="start_date" name="start_date" required placeholder="dd/mm/yyyy">
-        <div id="start_error" style="color: red; font-size: 12px;"></div>
+            <!-- Start Date -->
+            <div>
+                <label class="block font-medium text-gray-700 mb-1" for="start_date">Start Date</label>
+                <input type="text" id="start_date" name="start_date" required placeholder="dd/mm/yyyy"
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400">
+                <div id="start_error" class="text-red-500 text-sm"></div>
+            </div>
 
-        <label for="end_date">End Date:</label>
-        <input type="text" id="end_date" name="end_date" required placeholder="dd/mm/yyyy">
-        <div id="end_error" style="color: red; font-size: 12px;"></div>
+            <!-- End Date -->
+            <div>
+                <label class="block font-medium text-gray-700 mb-1" for="end_date">End Date</label>
+                <input type="text" id="end_date" name="end_date" required placeholder="dd/mm/yyyy"
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400">
+                <div id="end_error" class="text-red-500 text-sm"></div>
+            </div>
 
-        <button type="submit">Parse Bills</button>
-    </form>
+            <!-- Submit Button -->
+            <button type="submit"
+                    class="w-full bg-blue-600 text-white font-semibold py-3 rounded-xl shadow hover:bg-blue-700 transition">
+                Parse Bills
+            </button>
+        </form>
+    </div>
+
 <script>
+/* Your original date-formatting JS stays exactly the same */
 function isValidDateFormat(val) {
-  // Match pattern: dd/mm/yyyy
   const regex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
   const match = val.match(regex);
   if (!match) return false;
 
   const [_, dd, mm, yyyy] = match.map(Number);
-
   const date = new Date(yyyy, mm - 1, dd);
   return (
     date.getFullYear() === yyyy &&
@@ -139,9 +127,8 @@ function isValidDateFormat(val) {
 
 function formatDateInput(input, errorElementId) {
   let key = input.dataset.lastKey;
-  let val = input.value.replace(/\D/g, ""); // Remove all non-digits
+  let val = input.value.replace(/\D/g, "");
 
-  // Let backspace act naturally
   if (key === "Backspace") {
     input.dataset.lastKey = "";
     return;
@@ -175,7 +162,6 @@ document.addEventListener("DOMContentLoaded", function () {
       formatDateInput(input, input.id === "start_date" ? "start_error" : "end_error");
     });
 
-    // Add native date picker fallback
     input.setAttribute("type", "text");
     input.setAttribute("pattern", "\\d{2}/\\d{2}/\\d{4}");
   });
@@ -184,4 +170,3 @@ document.addEventListener("DOMContentLoaded", function () {
 
 </body>
 </html>
-

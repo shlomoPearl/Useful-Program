@@ -1,37 +1,49 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>Payment Graph</title>
+
+    <!-- TailwindCSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
-<body style="font-family: Arial; margin: 20px;">
-<!-- Buttons -->
-<a href="/" style="padding:10px 15px; background:#007bff; color:white;
-        border-radius:5px; text-decoration:none;">
-    🏠 Create Another Graph
-</a>
+<body class="bg-gray-100 min-h-screen">
 
-<a href="/download?format=pdf"
-   style="padding:10px 15px; background:#28a745; color:white;
-       border-radius:5px; margin-left:10px; text-decoration:none;">
-    📄 Download PDF
-</a>
+    <!-- Top Navigation / Buttons -->
+    <div class="w-full bg-white shadow-md py-4 px-6 flex flex-wrap items-center gap-3">
 
-<a href="/download?format=png"
-   style="padding:10px 15px; background:#17a2b8; color:white;
-       border-radius:5px; margin-left:10px; text-decoration:none;">
-    🖼 Download PNG
-</a>
+        <a href="/"
+           class="bg-blue-600 text-white px-4 py-2 rounded-xl font-medium hover:bg-blue-700 transition shadow">
+            🏠 Create Another Graph
+        </a>
 
-<br>
-<!-- Plotly graph -->
+        <a href="/download?format=pdf"
+           class="bg-green-600 text-white px-4 py-2 rounded-xl font-medium hover:bg-green-700 transition shadow">
+            📄 Download PDF
+        </a>
 
-<div id="graph-container" style="margin-top: 40px;">
-    {{ graph_html | safe }}
-</div>
+        <a href="/download?format=png"
+           class="bg-cyan-600 text-white px-4 py-2 rounded-xl font-medium hover:bg-cyan-700 transition shadow">
+            🖼 Download PNG
+        </a>
 
-<br><br>
+    </div>
+
+    <!-- Graph Container -->
+    <div class="max-w-6xl mx-auto mt-10 bg-white shadow-xl p-8 rounded-2xl">
+
+        <h1 class="text-2xl font-semibold text-gray-800 mb-6 text-center">
+            Payment History Graph
+        </h1>
+
+        <div id="graph-container" class="mt-6">
+            {{ graph_html | safe }}
+        </div>
+
+    </div>
+
+    <br><br>
 
 </body>
 </html>
