@@ -96,8 +96,9 @@ async def handle_form(request: Request,
     try:
         if g_id:
             token_dict = load_user_token(db, g_id)
+            service = GmailAuth.get_service_from_token_dict(token_dict)
             if token_dict:
-                return await process_flow(request, token_dict, form_data)
+                return await process_flow(request, service, form_data)
 
         request.session["form_data"] = form_data
         return RedirectResponse("/auth/login", status_code=303)
@@ -129,7 +130,8 @@ async def auth_callback(request: Request, code: str,
 
     try:
         auth = GmailAuth()
-        user_info = auth.exchange_code(code)
+        auth.exchange_code(code)
+        user_info = auth.get_user_db_dict()
         save_user_token(db,
                         user_info["user_id"],
                         user_info["email"],
@@ -139,27 +141,23 @@ async def auth_callback(request: Request, code: str,
         request.session["session_id"] = session_id
         form_data = request.session.pop("form_data", None)
         if form_data:
-            return await process_flow(request, user_info["token_dict"], form_data)
+            return await process_flow(request, auth.get_service(), form_data)
         return RedirectResponse("/", status_code=303)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"OAuth Error: {str(e)}")
 
 
-@app.post("/logout")
-async def logout(request: Request, db: Session = Depends(get_db)):
-    session_id = request.session.get("session_id")
-    if session_id:
-        invalidate_session(db, session_id)
-    request.session.clear()
-    return RedirectResponse("/", status_code=303)
+# @app.post("/logout")
+# async def logout(request: Request, db: Session = Depends(get_db)):
+#     session_id = request.session.get("session_id")
+#     if session_id:
+#         invalidate_session(db, session_id)
+#     request.session.clear()
+#     return RedirectResponse("/", status_code=303)
 
 
-async def process_flow(request: Request, token_dict: dict, form_data: dict):
+async def process_flow(request: Request, service: build, form_data: dict):
     try:
-        creds = GmailAuth.load_credentials_from_token_dict(token_dict)
-        if not creds:
-            raise Exception("Failed to load credentials")
-        service = build("gmail", "v1", credentials=creds)
         gmail_client = Gmail(
             address=form_data["email"],
             subject=form_data.get("subject"),
@@ -169,7 +167,7 @@ async def process_flow(request: Request, token_dict: dict, form_data: dict):
         bill_reader = ReadBill(attachments, form_data["currency"])
         bill_dict = bill_reader.parser(form_data.get("keyword"))
         request.session["bill_dict"] = bill_dict
-        # if I add title option -> save it in session to
+        # if I add title option save it in session to
         graph = GraphPlot(bill_dict)
         graph_html = graph.get_html_graph()
         return templates.TemplateResponse(
@@ -201,7 +199,7 @@ def download_graph(request: Request, format: str):
 @app.on_event("startup")
 async def startup_event():
     Base.metadata.create_all(bind=engine)
-    print("DB tabels raedy")
+    print("DB tables ready")
     db = SessionLocal()
     try:
         cleanup_expired_sessions(db)

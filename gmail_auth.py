@@ -29,19 +29,9 @@ class GmailAuth:
         flow = self.create_flow()
         flow.fetch_token(code=code)
         self.creds = flow.credentials
+        if self.creds.expired and self.creds.refresh_token:
+            self.creds.refresh(Request())
         self.initialize_service()
-        return {
-            "user_id": self.user_id,
-            "email": self.user_email,
-            "token_dict": {
-                "token": self.creds.token,
-                "refresh_token": self.creds.refresh_token,
-                "token_uri": self.creds.token_uri,
-                "client_id": self.creds.client_id,
-                "client_secret": self.creds.client_secret,
-                "scopes": self.creds.scopes
-            }
-        }
 
     def initialize_service(self):
         self.service = build("gmail", "v1", credentials=self.creds)
@@ -57,8 +47,22 @@ class GmailAuth:
             raise Exception("Service not authenticated yet.")
         return self.service
 
+    def get_user_db_dict(self):
+        return {
+            "user_id": self.user_id,
+            "email": self.user_email,
+            "token_dict": {
+                "token": self.creds.token,
+                "refresh_token": self.creds.refresh_token,
+                "token_uri": self.creds.token_uri,
+                "client_id": self.creds.client_id,
+                "client_secret": self.creds.client_secret,
+                "scopes": self.creds.scopes
+            }
+        }
+
     @staticmethod
-    def load_credentials_from_token_dict(token_dict: dict):
+    def get_service_from_token_dict(token_dict: dict):
         try:
             creds = Credentials(
                 token=token_dict.get("token"),
@@ -70,7 +74,7 @@ class GmailAuth:
             )
             if creds.expired and creds.refresh_token:
                 creds.refresh(Request())
-            return creds
+            return build("gmail", "v1", credentials=creds)
         except Exception as e:
             print(f"Error reconstructing credentials: {e}")
             return None
