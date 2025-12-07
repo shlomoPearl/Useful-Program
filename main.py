@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Form, Response, Request, HTTPException, Depends
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from googleapiclient.discovery import build
 from starlette.middleware.sessions import SessionMiddleware
@@ -10,7 +10,6 @@ from gmail import Gmail
 from gmail_auth import GmailAuth
 from graph_plot import *
 from db import get_db, SessionLocal, Base, engine
-from model import User, SessionToken
 from storage import *
 
 load_dotenv()

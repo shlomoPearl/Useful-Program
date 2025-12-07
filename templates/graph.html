@@ -46,4 +46,14 @@
     <br><br>
 
 </body>
+<script>
+window.onload = function() {
+    // hide loader if it exists (in case of navigation back)
+    const overlay = document.getElementById("loading-overlay");
+    if (overlay) {
+        overlay.style.opacity = "0";
+        setTimeout(() => overlay.style.display = "none", 300);
+    }
+};
+</script>
 </html>
