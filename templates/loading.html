@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Loading...</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: "Inter", sans-serif;
+            background: linear-gradient(135deg, #f6f7ff, #eef1ff);
+            height: 100vh;
+            overflow: hidden;
+        }
+        .loader-wrapper {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(6px);
+            background: rgba(255, 255, 255, 0.5);
+            z-index: 9999;
+        }
+        .loader-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 18px;
+            text-align: center;
+        }
+        .loader {
+            width: 80px;
+            height: 80px;
+            border: 6px solid #e2e2e2;
+            border-top-color: #6a00ff;
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite, pulse 1.8s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        @keyframes pulse {
+            0%   { box-shadow: 0 0 0 0 rgba(106,0,255,0.25); }
+            50%  { box-shadow: 0 0 22px 10px rgba(106,0,255,0.15); }
+            100% { box-shadow: 0 0 0 0 rgba(106,0,255,0.25); }
+        }
+        .loader-text {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #333;
+            letter-spacing: 0.2px;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="loader-wrapper">
+        <div class="loader-container">
+            <div class="loader"></div>
+            <div class="loader-text">Preparing your graph...</div>
+        </div>
+    </div>
+    <script>
+        window.addEventListener("load", () => {
+            fetch("/process_after_oauth")
+                .then(response => response.text())
+                .then(html => {
+                    document.open();
+                    document.write(html);
+                    document.close();
+                })
+                .catch(err => {
+                    console.error(err);
+                    document.body.innerHTML = "<h2 style='text-align:center;margin-top:40px;'>An error occurred.</h2>";
+                });
+        });
+    </script>
+
+</body>
+</html>

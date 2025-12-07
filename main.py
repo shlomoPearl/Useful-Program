@@ -140,19 +140,25 @@ async def auth_callback(request: Request, code: str,
         request.session["session_id"] = session_id
         form_data = request.session.pop("form_data", None)
         if form_data:
-            return await process_flow(request, auth.get_service(), form_data)
+            request.session["pending_form_data"] = form_data
+            return templates.TemplateResponse("loading.html", {"request": request})
+
+        # if form_data:
+        #     return await process_flow(request, auth.get_service(), form_data)
         return RedirectResponse("/", status_code=303)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"OAuth Error: {str(e)}")
 
 
-# @app.post("/logout")
-# async def logout(request: Request, db: Session = Depends(get_db)):
-#     session_id = request.session.get("session_id")
-#     if session_id:
-#         invalidate_session(db, session_id)
-#     request.session.clear()
-#     return RedirectResponse("/", status_code=303)
+@app.get("/process_after_oauth")
+async def process_after_oauth(request: Request, db: Session = Depends(get_db)):
+    g_id = get_current_user(request, db)
+    token_dict = load_user_token(db, g_id)
+    service = GmailAuth.get_service_from_token_dict(token_dict)
+    form_data = request.session.get("pending_form_data")
+    if not form_data:
+        return RedirectResponse("/", status_code=303)
+    return await process_flow(request, service, form_data)
 
 
 async def process_flow(request: Request, service: build, form_data: dict):
